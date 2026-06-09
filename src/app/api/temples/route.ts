@@ -1,105 +1,50 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
-import type { SortOrder } from 'mongoose'
 import TempleModel from '@/lib/models/Temple'
+import CircuitModel from '@/lib/models/Circuit'
 
-export async function GET(req: NextRequest) {
+const SEED_TEMPLES = [
+  { name: "Brihadeeswarar Temple", deity: "Lord Shiva", state: "Tamil Nadu", city: "Thanjavur", timing: "6:00 AM – 12:30 PM, 4:00 PM – 8:30 PM", emoji: "🛕", history: "Built by Raja Raja Chola I around 1010 CE, a UNESCO World Heritage Site. The vimana stands 66 metres tall and casts no shadow at noon.", significance: "UNESCO World Heritage Chola Temple", festivals: ["Maha Shivaratri", "Thiruvadhirai", "Karthigai Deepam"], rituals: ["Abhishekam", "Aarthi"], dressCode: "Traditional attire preferred. Men remove shirts inside sanctum.", facilities: ["Choultry", "Guesthouses", "Local transport"], tags: ["UNESCO", "Dravidian", "Chola"], featured: true, famous: 5, status: "published" },
+  { name: "Meenakshi Amman Temple", deity: "Goddess Meenakshi", state: "Tamil Nadu", city: "Madurai", timing: "5:00 AM – 12:30 PM, 4:00 PM – 10:00 PM", emoji: "🏛️", history: "Historic Hindu temple with 14 gopurams adorned with thousands of colorful sculptures, built during the Nayak period (1623–55 CE).", significance: "Shakti Peetha with supreme Dravidian architecture", festivals: ["Meenakshi Thirukalyanam", "Chithirai Festival", "Float Festival"], rituals: ["Alangaram", "Midnight Puja"], dressCode: "Modest clothing required. No shorts or sleeveless.", facilities: ["Parking", "Cloakroom", "Nearby hotels"], tags: ["Shakti Peetha", "Famous", "Dravidian"], featured: true, famous: 5, status: "published" },
+  { name: "Kashi Vishwanath Temple", deity: "Lord Shiva", state: "Uttar Pradesh", city: "Varanasi", timing: "3:00 AM – 11:00 PM", emoji: "⛩️", history: "One of the twelve Jyotirlingas on the western bank of the Ganges. The current structure was built by Ahilya Bai Holkar in 1780.", significance: "Most sacred Jyotirlinga in the eternal city of Varanasi", festivals: ["Maha Shivaratri", "Dev Deepawali", "Shravan Somvar"], rituals: ["Mangala Aarti", "Bhog Aarti", "Sapta Rishi Aarti"], dressCode: "Clean and modest traditional attire.", facilities: ["Ghats nearby", "Dharamshala", "Boat rides"], tags: ["Jyotirlinga", "Char Dham", "Sacred"], featured: true, famous: 5, status: "published" },
+  { name: "Tirupati Venkateswara Temple", deity: "Lord Vishnu", state: "Andhra Pradesh", city: "Tirupati", timing: "2:30 AM – 1:00 AM", emoji: "🌟", history: "One of the richest and most visited religious sites in the world, receiving 50,000–100,000 pilgrims daily on the Tirumala hills.", significance: "Richest temple, most visited pilgrimage globally", festivals: ["Brahmotsavam", "Vaikunta Ekadasi", "Rathasapthami"], rituals: ["Suprabhatam", "Archana", "Thomala Seva"], dressCode: "Traditional Indian attire mandatory.", entryFee: "Free darshan; special darshan ₹300", facilities: ["TTD choultries", "Prasadam counters", "Online booking"], tags: ["Vaishnava", "Famous", "Tirumala"], featured: true, famous: 5, status: "published" },
+  { name: "Somnath Temple", deity: "Lord Shiva", state: "Gujarat", city: "Veraval", timing: "6:00 AM – 9:30 PM", emoji: "🌊", history: "First of the twelve Jyotirlingas on Gujarat's western coast. Current structure inaugurated by Sardar Patel in 1951.", significance: "First Jyotirlinga, historically significant coastal temple", festivals: ["Maha Shivaratri", "Kartik Purnima"], rituals: ["Abhishek", "Aarti"], dressCode: "Traditional and modest attire.", facilities: ["Trust guesthouses", "Sea view promenade", "Museum"], tags: ["Jyotirlinga", "Coastal", "Heritage"], featured: false, famous: 4, status: "published" },
+  { name: "Kedarnath Temple", deity: "Lord Shiva", state: "Uttarakhand", city: "Kedarnath", timing: "6:00 AM – 3:00 PM, 5:00 PM – 9:00 PM", emoji: "🏔️", history: "Jyotirlinga at 3,583m in the Himalayas. Built by the Pandavas and revived by Adi Shankaracharya.", significance: "Highest Jyotirlinga, part of Char Dham yatra", festivals: ["Char Dham Yatra opening", "Maha Shivaratri"], rituals: ["Mahabhishek", "Rudrabhishek"], dressCode: "Warm clothing essential.", facilities: ["Helicopter service", "GMVN guesthouses", "Medical facilities"], tags: ["Jyotirlinga", "Char Dham", "Himalayan"], featured: false, famous: 4, status: "published" },
+  { name: "Jagannath Temple", deity: "Lord Jagannath", state: "Odisha", city: "Puri", timing: "5:00 AM – 12:00 PM, 4:00 PM – 11:00 PM", emoji: "🎪", history: "12th-century Char Dham temple famous for annual Rath Yatra, built by King Anantaganabhima.", significance: "One of four Char Dham sites, famous for Rath Yatra", festivals: ["Rath Yatra", "Snana Yatra", "Chandan Yatra"], rituals: ["Mangala Aarti", "Bhoga Mandap"], dressCode: "Only Hindus allowed. No leather items.", facilities: ["Pilgrim accommodation", "Mahaprasad stalls"], tags: ["Char Dham", "Vaishnava", "Rath Yatra"], featured: false, famous: 5, status: "published" },
+  { name: "Harmandir Sahib (Golden Temple)", deity: "Guru Granth Sahib", state: "Punjab", city: "Amritsar", timing: "Open 24 hours", emoji: "✨", history: "Built in 1604 by Guru Arjan Dev Ji, covered in gold leaf. Welcomes all religions with free langar.", significance: "Holiest Sikh gurdwara, open to all faiths", festivals: ["Baisakhi", "Guru Nanak Jayanti", "Gurpurab"], rituals: ["Ardas", "Kirtan", "Langar Seva"], dressCode: "Head covered. Remove shoes. Modest clothing.", facilities: ["Free langar 24hrs", "Sarovar bathing", "Guesthouses", "Museum"], tags: ["Sikh Heritage", "Open 24hr"], featured: true, famous: 5, status: "published" },
+  { name: "Rameshwaram Temple", deity: "Lord Shiva", state: "Tamil Nadu", city: "Rameswaram", timing: "5:00 AM – 1:00 PM, 3:00 PM – 9:00 PM", emoji: "🌺", history: "Jyotirlinga and Char Dham with India's longest corridor (1220m) and 22 teerthas. Associated with the Ramayana.", significance: "Southernmost Char Dham and Jyotirlinga", festivals: ["Maha Shivaratri", "Brahmotsavam"], rituals: ["Teertham bath (22 wells)", "Abhishekam"], dressCode: "Men remove shirts inside. Wet clothes allowed.", facilities: ["Dharamshala", "Teertham facilities", "Sea beach"], tags: ["Jyotirlinga", "Char Dham", "Coastal"], featured: false, famous: 4, status: "published" },
+  { name: "Vaishno Devi Temple", deity: "Goddess Vaishno Devi", state: "Jammu & Kashmir", city: "Katra", timing: "Open 24 hours", emoji: "⛰️", history: "Cave shrine in the Trikuta Mountains housing three natural pindis. Receives 8-10 million pilgrims annually.", significance: "Most visited Shakti Peetha", festivals: ["Navratri", "Diwali", "Ashtami"], rituals: ["Pindi Darshan", "Aarti", "Havan"], dressCode: "Modest clothing. No footwear inside cave.", facilities: ["SMVDSB facilities", "Battery cars", "Helicopters"], tags: ["Shakti Peetha", "Famous", "Cave Shrine"], featured: false, famous: 5, status: "published" },
+  { name: "Sun Temple Konark", deity: "Surya (Sun God)", state: "Odisha", city: "Konark", timing: "6:00 AM – 8:00 PM", emoji: "☀️", history: "13th-century UNESCO World Heritage chariot-shaped temple by King Narasimhadeva I with intricate sculptures.", significance: "UNESCO World Heritage, masterpiece of Kalinga architecture", festivals: ["Konark Dance Festival", "Magha Saptami"], rituals: ["Surya Puja"], dressCode: "Modest attire. Archaeological site.", entryFee: "₹40 (Indian), ₹600 (Foreign)", facilities: ["Museum", "Guided tours", "Beach nearby"], tags: ["UNESCO", "Heritage", "Surya Temple"], featured: false, famous: 4, status: "published" },
+  { name: "Dilwara Jain Temples", deity: "Jain Tirthankaras", state: "Rajasthan", city: "Mount Abu", timing: "12:00 PM – 6:00 PM", emoji: "💠", history: "11th-13th century marble temple complex at Mount Abu, finest example of Jain architecture.", significance: "Supreme Jain pilgrimage, finest marble temples", festivals: ["Paryushana", "Mahavir Jayanti"], rituals: ["Puja", "Samayik"], dressCode: "No leather. No photography inside.", facilities: ["Dharamshalas", "Resort town nearby"], tags: ["Jain Heritage", "Marble Architecture", "Rajasthan"], featured: false, famous: 4, status: "published" },
+]
+
+const SEED_CIRCUITS = [
+  { name: "Char Dham Yatra", emoji: "🏔️", description: "The four sacred Hindu pilgrimage sites in Uttarakhand.", region: "North India", stops: ["Yamunotri", "Gangotri", "Kedarnath", "Badrinath"], duration: "10-14 days", difficulty: "challenging", bestSeason: "May-June, September-October" },
+  { name: "12 Jyotirlinga Circuit", emoji: "⚡", description: "The twelve sacred Jyotirlinga temples of Lord Shiva spread across India.", region: "Pan India", stops: ["Somnath", "Mallikarjuna", "Mahakaleshwar", "Omkareshwar", "Kedarnath", "Bhimashankar", "Kashi Vishwanath", "Trimbakeshwar", "Vaidyanath", "Nageshwar", "Rameshwaram", "Grishneshwar"], duration: "30-45 days", difficulty: "challenging", bestSeason: "November-February" },
+  { name: "Shakti Peetha Circuit", emoji: "🌸", description: "Pilgrimage to the 51 Shakti Peethas across India.", region: "Pan India", stops: ["Kamakhya", "Kalighat", "Jwalamukhi", "Vaishno Devi", "Meenakshi Amman"], duration: "45-60 days", difficulty: "moderate", bestSeason: "October-March" },
+  { name: "Pancha Bhuta Stalas", emoji: "🌿", description: "Five Shiva temples in South India representing the five natural elements.", region: "South India", stops: ["Ekambareswarar (Earth)", "Thillai Nataraja (Space)", "Arunachaleswarar (Fire)", "Jambukeswarar (Water)", "Sri Kalahasti (Air)"], duration: "7-10 days", difficulty: "easy", bestSeason: "Year-round" },
+  { name: "Divya Desam Circuit", emoji: "🪷", description: "108 Vishnu temples sacred to the Vaishnavite tradition.", region: "South India", stops: ["Srirangam", "Tirupati", "Badrinath", "Ahobilam", "Muktinath (Nepal)"], duration: "30-45 days", difficulty: "moderate", bestSeason: "November-February" },
+  { name: "Parikrama of Varanasi", emoji: "🪔", description: "Sacred circumambulation of Varanasi visiting major temples and ghats.", region: "North India", stops: ["Kashi Vishwanath", "Sankat Mochan", "Durga Temple", "Bharat Mata Temple", "Tulsi Manas Temple"], duration: "3-5 days", difficulty: "easy", bestSeason: "October-March" },
+]
+
+export async function GET() {
   try {
     await connectDB()
 
-    const { searchParams } = new URL(req.url)
-    const query = searchParams.get('query') || ''
-    const state = searchParams.get('state') || ''
-    const deity = searchParams.get('deity') || ''
-    const tag = searchParams.get('tag') || ''
-    const featured = searchParams.get('featured')
-    const status = searchParams.get('status') || 'published'
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const sort = searchParams.get('sort') || 'name'
+    await TempleModel.deleteMany({})
+    await CircuitModel.deleteMany({})
 
-    // Build filter object
-    const filter: Record<string, unknown> = { status }
-    if (state) filter.state = state
-    if (deity) filter.deity = new RegExp(deity, 'i')
-    if (tag) filter.tags = { $in: [tag] }
-    if (featured === 'true') filter.featured = true
-
-    let dbQuery
-    if (query) {
-      dbQuery = TempleModel.find(
-        { ...filter, $text: { $search: query } },
-        { score: { $meta: 'textScore' } }
-      )
-    } else {
-      dbQuery = TempleModel.find(filter)
-    }
-
-    // Sorting
-    const sortMap: Record<string, Record<string, SortOrder>> = {
-  name:   { name: 1 },
-  state:  { state: 1, name: 1 },
-  famous: { famous: -1, name: 1 },
-  newest: { createdAt: -1 },
-}
-
-const sortOption = sortMap[sort] ?? { name: 1 as SortOrder }
-dbQuery = dbQuery.sort(sortOption)
-
-    const total = await TempleModel.countDocuments(filter)
-    const temples = await dbQuery
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean()
+    await TempleModel.insertMany(SEED_TEMPLES)
+    await CircuitModel.insertMany(SEED_CIRCUITS)
 
     return NextResponse.json({
       success: true,
-      data: temples,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
+      message: `Seeded ${SEED_TEMPLES.length} temples and ${SEED_CIRCUITS.length} circuits successfully!`
     })
   } catch (error) {
-    console.error('GET /api/temples error:', error)
+    console.error('Seed error:', error)
     return NextResponse.json(
-      { success: false, message: 'Failed to fetch temples' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function POST(req: NextRequest) {
-  try {
-    await connectDB()
-
-    const body = await req.json()
-
-    // Basic validation
-    const required = ['name', 'deity', 'state', 'city', 'history', 'timing', 'dressCode']
-    for (const field of required) {
-      if (!body[field]) {
-        return NextResponse.json(
-          { success: false, message: `Missing required field: ${field}` },
-          { status: 400 }
-        )
-      }
-    }
-
-    const temple = new TempleModel({
-      ...body,
-      status: body.status || 'pending',
-    })
-
-    await temple.save()
-
-    return NextResponse.json(
-      { success: true, data: temple, message: 'Temple created successfully' },
-      { status: 201 }
-    )
-  } catch (error) {
-    console.error('POST /api/temples error:', error)
-    return NextResponse.json(
-      { success: false, message: 'Failed to create temple' },
+      { success: false, error: String(error) },
       { status: 500 }
     )
   }
