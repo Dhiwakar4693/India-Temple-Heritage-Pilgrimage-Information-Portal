@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/db'
+import type { SortOrder } from 'mongoose'
 import TempleModel from '@/lib/models/Temple'
 
 export async function GET(req: NextRequest) {
@@ -35,13 +36,15 @@ export async function GET(req: NextRequest) {
     }
 
     // Sorting
-    const sortMap: Record<string, Record<string, number | string>> = {
-      name: { name: 1 },
-      state: { state: 1, name: 1 },
-      famous: { famous: -1, name: 1 },
-      newest: { createdAt: -1 },
-    }
-    dbQuery = dbQuery.sort(sortMap[sort] || { name: 1 })
+    const sortMap: Record<string, Record<string, SortOrder>> = {
+  name:   { name: 1 },
+  state:  { state: 1, name: 1 },
+  famous: { famous: -1, name: 1 },
+  newest: { createdAt: -1 },
+}
+
+const sortOption = sortMap[sort] ?? { name: 1 as SortOrder }
+dbQuery = dbQuery.sort(sortOption)
 
     const total = await TempleModel.countDocuments(filter)
     const temples = await dbQuery
