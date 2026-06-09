@@ -24,7 +24,7 @@ const CIRCUITS = [
   { name: "Pancha Bhuta Stalas", emoji: "🌿", desc: "Five Shiva temples in South India representing the five elements.", stops: ["Ekambareswarar", "Nataraja", "Arunachaleswarar", "Jambukeswarar", "Sri Kalahasti"], duration: "7–10 days" },
 ]
 
-const STATES = [...new Set(TEMPLES.map(t => t.state))]
+const STATES = Array.from(new Set(TEMPLES.map(t => t.state)))
 
 type Temple = typeof TEMPLES[0]
 
